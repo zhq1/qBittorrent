@@ -1,6 +1,6 @@
 /*
  * Bittorrent Client using Qt and libtorrent.
- * Copyright (C) 2006  Christophe Dumez
+ * Copyright (C) 2006  Christophe Dumez <chris@qbittorrent.org>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,8 +24,6 @@
  * modify file(s), you may extend this exception to your version of the file(s),
  * but you are not obligated to do so. If you do not wish to do so, delete this
  * exception statement from your version.
- *
- * Contact : chris@qbittorrent.org
  */
 
 #include "mainwindow.h"
@@ -40,6 +38,8 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QProcess>
+#include <QPushButton>
+#include <QRegularExpression>
 #include <QScrollBar>
 #include <QShortcut>
 #include <QSplitter>
@@ -57,10 +57,6 @@
 #include "notifications.h"
 #endif
 
-#include "about_imp.h"
-#include "addnewtorrentdialog.h"
-#include "application.h"
-#include "autoexpandabledialog.h"
 #include "base/bittorrent/session.h"
 #include "base/bittorrent/sessionstatus.h"
 #include "base/bittorrent/torrenthandle.h"
@@ -70,26 +66,31 @@
 #include "base/rss/rss_folder.h"
 #include "base/rss/rss_session.h"
 #include "base/settingsstorage.h"
+#include "base/utils/foreignapps.h"
 #include "base/utils/fs.h"
 #include "base/utils/misc.h"
+#include "aboutdialog.h"
+#include "addnewtorrentdialog.h"
+#include "application.h"
+#include "autoexpandabledialog.h"
 #include "cookiesdialog.h"
-#include "downloadfromurldlg.h"
-#include "executionlog.h"
+#include "downloadfromurldialog.h"
+#include "executionlogwidget.h"
 #include "guiiconprovider.h"
 #include "hidabletabwidget.h"
 #include "lineedit.h"
-#include "optionsdlg.h"
+#include "optionsdialog.h"
 #include "peerlistwidget.h"
 #include "powermanagement.h"
 #include "propertieswidget.h"
 #include "rss/rsswidget.h"
 #include "search/searchwidget.h"
-#include "speedlimitdlg.h"
+#include "speedlimitdialog.h"
 #include "statsdialog.h"
 #include "statusbar.h"
-#include "torrentcreatordlg.h"
-#include "torrentmodel.h"
-#include "trackerlist.h"
+#include "torrentcreatordialog.h"
+#include "transferlistmodel.h"
+#include "trackerlistwidget.h"
 #include "transferlistfilterswidget.h"
 #include "transferlistwidget.h"
 #include "ui_mainwindow.h"
@@ -106,7 +107,7 @@
 #include "programupdater.h"
 #endif
 #if LIBTORRENT_VERSION_NUM < 10100
-#include "trackerlogin.h"
+#include "trackerlogindialog.h"
 #endif
 
 #ifdef Q_OS_MAC
@@ -121,12 +122,12 @@ namespace
 #define SETTINGS_KEY(name) "GUI/" name
 
     // ExecutionLog properties keys
-#define EXECUTIONLOG_SETTINGS_KEY(name) SETTINGS_KEY("Log/") name
+#define EXECUTIONLOG_SETTINGS_KEY(name) QStringLiteral(SETTINGS_KEY("Log/") name)
     const QString KEY_EXECUTIONLOG_ENABLED = EXECUTIONLOG_SETTINGS_KEY("Enabled");
     const QString KEY_EXECUTIONLOG_TYPES = EXECUTIONLOG_SETTINGS_KEY("Types");
 
     // Notifications properties keys
-#define NOTIFICATIONS_SETTINGS_KEY(name) SETTINGS_KEY("Notifications/") name
+#define NOTIFICATIONS_SETTINGS_KEY(name) QStringLiteral(SETTINGS_KEY("Notifications/") name)
     const QString KEY_NOTIFICATIONS_ENABLED = NOTIFICATIONS_SETTINGS_KEY("Enabled");
     const QString KEY_NOTIFICATIONS_TORRENTADDED = NOTIFICATIONS_SETTINGS_KEY("TorrentAdded");
 
@@ -160,11 +161,13 @@ MainWindow::MainWindow(QWidget *parent)
     // Setting icons
 #ifndef Q_OS_MAC
 #ifdef Q_OS_UNIX
-    if (Preferences::instance()->useSystemIconTheme())
-        setWindowIcon(QIcon::fromTheme("qbittorrent", QIcon(":/icons/skin/qbittorrent32.png")));
-    else
+    const QIcon appLogo = Preferences::instance()->useSystemIconTheme()
+        ? QIcon::fromTheme("qbittorrent", QIcon(":/icons/skin/qbittorrent-tray.svg"))
+        : QIcon(":/icons/skin/qbittorrent-tray.svg");
+#else
+    const QIcon appLogo(":/icons/skin/qbittorrent-tray.svg");
 #endif // Q_OS_UNIX
-    setWindowIcon(QIcon(":/icons/skin/qbittorrent32.png"));
+    setWindowIcon(appLogo);
 #endif // Q_OS_MAC
 
 #if (defined(Q_OS_UNIX))
@@ -263,7 +266,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(BitTorrent::Session::instance(), &BitTorrent::Session::trackersRemoved, m_transferListFiltersWidget, &TransferListFiltersWidget::removeTrackers);
     connect(BitTorrent::Session::instance(), &BitTorrent::Session::trackerlessStateChanged, m_transferListFiltersWidget, &TransferListFiltersWidget::changeTrackerless);
 
-    using Func = void (TransferListFiltersWidget::*)(BitTorrent::TorrentHandle * const, const QString &);
+    using Func = void (TransferListFiltersWidget::*)(BitTorrent::TorrentHandle *const, const QString &);
     connect(BitTorrent::Session::instance(), &BitTorrent::Session::trackerSuccess, m_transferListFiltersWidget, static_cast<Func>(&TransferListFiltersWidget::trackerSuccess));
     connect(BitTorrent::Session::instance(), &BitTorrent::Session::trackerError, m_transferListFiltersWidget, static_cast<Func>(&TransferListFiltersWidget::trackerError));
     connect(BitTorrent::Session::instance(), &BitTorrent::Session::trackerWarning, m_transferListFiltersWidget, static_cast<Func>(&TransferListFiltersWidget::trackerWarning));
@@ -375,7 +378,7 @@ MainWindow::MainWindow(QWidget *parent)
     on_actionWarningMessages_triggered(m_ui->actionWarningMessages->isChecked());
     on_actionCriticalMessages_triggered(m_ui->actionCriticalMessages->isChecked());
     if (m_ui->actionSearchWidget->isChecked())
-        QTimer::singleShot(0, this, SLOT(on_actionSearchWidget_triggered()));
+        QTimer::singleShot(0, this, &MainWindow::on_actionSearchWidget_triggered);
 
     // Auto shutdown actions
     QActionGroup *autoShutdownGroup = new QActionGroup(this);
@@ -679,7 +682,9 @@ void MainWindow::displayRSSTab(bool enable)
         if (!m_rssWidget) {
             m_rssWidget = new RSSWidget(m_tabs);
             connect(m_rssWidget.data(), &RSSWidget::unreadCountUpdated, this, &MainWindow::handleRSSUnreadCountUpdated);
-#ifndef Q_OS_MAC
+#ifdef Q_OS_MAC
+            m_tabs->addTab(m_rssWidget, tr("RSS (%1)").arg(RSS::Session::instance()->rootFolder()->unreadCount()));
+#else
             const int indexTab = m_tabs->addTab(m_rssWidget, tr("RSS (%1)").arg(RSS::Session::instance()->rootFolder()->unreadCount()));
             m_tabs->setTabIcon(indexTab, GuiIconProvider::instance()->getIcon("application-rss+xml"));
 #endif
@@ -922,18 +927,26 @@ void MainWindow::askRecursiveTorrentDownloadConfirmation(BitTorrent::TorrentHand
 {
     Preferences *const pref = Preferences::instance();
     if (pref->recursiveDownloadDisabled()) return;
-    // Get Torrent name
-    QString torrentName = torrent->name();
-    QMessageBox confirmBox(QMessageBox::Question, tr("Recursive download confirmation"), tr("The torrent '%1' contains torrent files, do you want to proceed with their download?").arg(torrentName), QMessageBox::NoButton, this);
-    QPushButton *yes = confirmBox.addButton(tr("Yes"), QMessageBox::YesRole);
-    /*QPushButton *no = */ confirmBox.addButton(tr("No"), QMessageBox::NoRole);
-    QPushButton *never = confirmBox.addButton(tr("Never"), QMessageBox::NoRole);
-    confirmBox.exec();
 
-    if (confirmBox.clickedButton() == yes)
-        BitTorrent::Session::instance()->recursiveTorrentDownload(torrent->hash());
-    else if (confirmBox.clickedButton() == never)
-        pref->disableRecursiveDownload();
+    const auto torrentHash = torrent->hash();
+
+    QMessageBox *confirmBox = new QMessageBox(QMessageBox::Question, tr("Recursive download confirmation")
+        , tr("The torrent '%1' contains torrent files, do you want to proceed with their download?").arg(torrent->name())
+        , QMessageBox::NoButton, this);
+    confirmBox->setAttribute(Qt::WA_DeleteOnClose);
+    confirmBox->setModal(true);
+
+    const QPushButton *yes = confirmBox->addButton(tr("Yes"), QMessageBox::YesRole);
+    /*QPushButton *no = */ confirmBox->addButton(tr("No"), QMessageBox::NoRole);
+    const QPushButton *never = confirmBox->addButton(tr("Never"), QMessageBox::NoRole);
+    connect(confirmBox, &QMessageBox::buttonClicked, this, [torrentHash, yes, never](const QAbstractButton *button)
+    {
+        if (button == yes)
+            BitTorrent::Session::instance()->recursiveTorrentDownload(torrentHash);
+        if (button == never)
+            Preferences::instance()->disableRecursiveDownload();
+    });
+    confirmBox->show();
 }
 
 void MainWindow::handleDownloadFromUrlFailure(QString url, QString reason) const
@@ -1045,7 +1058,7 @@ void MainWindow::notifyOfUpdate(QString)
                                    , Log::CRITICAL);
     // Delete the executable watcher
     delete m_executableWatcher;
-    m_executableWatcher = 0;
+    m_executableWatcher = nullptr;
 }
 
 #ifndef Q_OS_MAC
@@ -1053,7 +1066,7 @@ void MainWindow::notifyOfUpdate(QString)
 void MainWindow::toggleVisibility(const QSystemTrayIcon::ActivationReason reason)
 {
     switch (reason) {
-    case QSystemTrayIcon::Trigger: {
+    case QSystemTrayIcon::Trigger:
         if (isHidden()) {
             if (m_uiLocked && !unlockUI())  // Ask for UI lock password
                 return;
@@ -1069,9 +1082,7 @@ void MainWindow::toggleVisibility(const QSystemTrayIcon::ActivationReason reason
         else {
             hide();
         }
-
         break;
-    }
 
     default:
         break;
@@ -1086,7 +1097,7 @@ void MainWindow::on_actionAbout_triggered()
     if (m_aboutDlg)
         m_aboutDlg->activateWindow();
     else
-        m_aboutDlg = new about(this);
+        m_aboutDlg = new AboutDialog(this);
 }
 
 void MainWindow::on_actionStatistics_triggered()
@@ -1130,7 +1141,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
         e->accept();
         return;
     }
-#endif
+#endif // Q_OS_MAC
 
     if (pref->confirmOnExit() && BitTorrent::Session::instance()->hasActiveTorrents()) {
         if (e->spontaneous() || m_forceExit) {
@@ -1138,7 +1149,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
                 show();
             QMessageBox confirmBox(QMessageBox::Question, tr("Exiting qBittorrent"),
                                    // Split it because the last sentence is used in the Web UI
-                                   tr("Some files are currently transferring.") + "\n" + tr("Are you sure you want to quit qBittorrent?"),
+                                   tr("Some files are currently transferring.") + '\n' + tr("Are you sure you want to quit qBittorrent?"),
                                    QMessageBox::NoButton, this);
             QPushButton *noBtn = confirmBox.addButton(tr("&No"), QMessageBox::NoRole);
             confirmBox.addButton(tr("&Yes"), QMessageBox::YesRole);
@@ -1185,7 +1196,7 @@ void MainWindow::createTorrentTriggered(const QString &path)
         m_createTorrentDlg->activateWindow();
     }
     else
-        m_createTorrentDlg = new TorrentCreatorDlg(this, path);
+        m_createTorrentDlg = new TorrentCreatorDialog(this, path);
 }
 
 bool MainWindow::event(QEvent *e)
@@ -1211,7 +1222,7 @@ bool MainWindow::event(QEvent *e)
                 if (!hasModalWindow) {
                     qDebug("Minimize to Tray enabled, hiding!");
                     e->ignore();
-                    QTimer::singleShot(0, this, SLOT(hide()));
+                    QTimer::singleShot(0, this, &QWidget::hide);
                     return true;
                 }
             }
@@ -1349,9 +1360,9 @@ void MainWindow::on_actionOpen_triggered()
         }
 
         // Save last dir to remember it
-        QStringList topDir = Utils::Fs::fromNativePath(pathsList.at(0)).split("/");
+        QStringList topDir = Utils::Fs::fromNativePath(pathsList.at(0)).split('/');
         topDir.removeLast();
-        pref->setMainLastDir(Utils::Fs::fromNativePath(topDir.join("/")));
+        pref->setMainLastDir(Utils::Fs::fromNativePath(topDir.join('/')));
     }
 }
 
@@ -1505,7 +1516,7 @@ void MainWindow::trackerAuthenticationRequired(BitTorrent::TorrentHandle *const 
 #if LIBTORRENT_VERSION_NUM < 10100
     if (m_unauthenticatedTrackers.indexOf(qMakePair(torrent, torrent->currentTracker())) < 0)
         // Tracker login
-        new trackerLogin(this, torrent);
+        new TrackerLoginDialog(this, torrent);
 #else
     Q_UNUSED(torrent);
 #endif
@@ -1532,7 +1543,7 @@ void MainWindow::updateGUI()
 #else
         // OSes such as Windows do not support html here
         QString html = tr("DL speed: %1", "e.g: Download speed: 10 KiB/s").arg(Utils::Misc::friendlyUnit(status.payloadDownloadRate, true));
-        html += "\n";
+        html += '\n';
         html += tr("UP speed: %1", "e.g: Upload speed: 10 KiB/s").arg(Utils::Misc::friendlyUnit(status.payloadUploadRate, true));
 #endif // Q_OS_UNIX
         m_systrayIcon->setToolTip(html); // tray icon
@@ -1594,8 +1605,8 @@ void MainWindow::downloadFromURLList(const QStringList &urlList)
 {
     const bool useTorrentAdditionDialog = AddNewTorrentDialog::isEnabled();
     foreach (QString url, urlList) {
-        if (((url.size() == 40) && !url.contains(QRegExp("[^0-9A-Fa-f]")))
-            || ((url.size() == 32) && !url.contains(QRegExp("[^2-7A-Za-z]"))))
+        if (((url.size() == 40) && !url.contains(QRegularExpression("[^0-9A-Fa-f]")))
+            || ((url.size() == 32) && !url.contains(QRegularExpression("[^2-7A-Za-z]"))))
             url = "magnet:?xt=urn:btih:" + url;
 
         if (useTorrentAdditionDialog)
@@ -1654,7 +1665,7 @@ void MainWindow::createTrayIcon()
     connect(m_systrayIcon.data(), &QSystemTrayIcon::activated, this, &MainWindow::toggleVisibility);
     m_systrayIcon->show();
 }
-#endif
+#endif // Q_OS_MAC
 
 QMenu *MainWindow::trayIconMenu()
 {
@@ -1740,45 +1751,42 @@ void MainWindow::on_actionRSSReader_triggered()
 void MainWindow::on_actionSearchWidget_triggered()
 {
     if (!m_hasPython && m_ui->actionSearchWidget->isChecked()) {
-        int pythonVersion = Utils::Misc::pythonVersion();
+        int majorVersion = Utils::ForeignApps::pythonInfo().version.majorNumber();
 
         // Check if python is already in PATH
-        if (pythonVersion > 0)
+        if (majorVersion > 0) {
             // Prevent translators from messing with PATH
             Logger::instance()->addMessage(tr("Python found in %1: %2", "Python found in PATH: /usr/local/bin:/usr/bin:/etc/bin")
                 .arg("PATH", qgetenv("PATH").constData()), Log::INFO);
+        }
 #ifdef Q_OS_WIN
-        else if (addPythonPathToEnv())
-            pythonVersion = Utils::Misc::pythonVersion();
+        else if (addPythonPathToEnv()) {
+            majorVersion = Utils::ForeignApps::pythonInfo().version.majorNumber();
+        }
 #endif
+        else {
+            QMessageBox::information(this, tr("Undetermined Python version"), tr("Couldn't determine your Python version. Search engine disabled."));
+            m_ui->actionSearchWidget->setChecked(false);
+            Preferences::instance()->setSearchEnabled(false);
+            return;
+        }
 
         bool res = false;
 
-        if ((pythonVersion == 2) || (pythonVersion == 3)) {
+        if ((majorVersion == 2) || (majorVersion == 3)) {
             // Check Python minimum requirement: 2.7.9 / 3.3.0
-            QString version = Utils::Misc::pythonVersionComplete();
-            QStringList splitted = version.split('.');
-            if (splitted.size() > 2) {
-                int middleVer = splitted.at(1).toInt();
-                int lowerVer = splitted.at(2).toInt();
-                if (((pythonVersion == 2) && (middleVer < 7))
-                    || ((pythonVersion == 2) && (middleVer == 7) && (lowerVer < 9))
-                    || ((pythonVersion == 3) && (middleVer < 3))) {
-                    QMessageBox::information(this, tr("Old Python Interpreter"), tr("Your Python version (%1) is outdated. Please upgrade to latest version for search engines to work.\nMinimum requirement: 2.7.9 / 3.3.0.").arg(version));
-                    m_ui->actionSearchWidget->setChecked(false);
-                    Preferences::instance()->setSearchEnabled(false);
-                    return;
-                }
-                else {
-                    res = true;
-                }
-            }
-            else {
-                QMessageBox::information(this, tr("Undetermined Python version"), tr("Couldn't determine your Python version (%1). Search engine disabled.").arg(version));
+            using Version = Utils::ForeignApps::PythonInfo::Version;
+            const Version pyVersion = Utils::ForeignApps::pythonInfo().version;
+
+            if (((majorVersion == 2) && (pyVersion < Version {2, 7, 9}))
+                || ((majorVersion == 3) && (pyVersion < Version {3, 3, 0}))) {
+                QMessageBox::information(this, tr("Old Python Interpreter"), tr("Your Python version (%1) is outdated. Please upgrade to latest version for search engines to work.\nMinimum requirement: 2.7.9 / 3.3.0.").arg(pyVersion));
                 m_ui->actionSearchWidget->setChecked(false);
                 Preferences::instance()->setSearchEnabled(false);
                 return;
             }
+
+            res = true;
         }
 
         if (res) {
@@ -1818,8 +1826,8 @@ void MainWindow::on_actionSearchWidget_triggered()
 void MainWindow::on_actionDownloadFromURL_triggered()
 {
     if (!m_downloadFromURLDialog) {
-        m_downloadFromURLDialog = new downloadFromURL(this);
-        connect(m_downloadFromURLDialog.data(), &downloadFromURL::urlsReadyToBeDownloaded, this, &MainWindow::downloadFromURLList);
+        m_downloadFromURLDialog = new DownloadFromURLDialog(this);
+        connect(m_downloadFromURLDialog.data(), &DownloadFromURLDialog::urlsReadyToBeDownloaded, this, &MainWindow::downloadFromURLList);
     }
 }
 
@@ -1829,9 +1837,11 @@ void MainWindow::handleUpdateCheckFinished(bool updateAvailable, QString newVers
 {
     QMessageBox::StandardButton answer = QMessageBox::Yes;
     if (updateAvailable) {
-        answer = QMessageBox::question(this, tr("qBittorrent Update Available"),
-                                       tr("A new version is available.\nDo you want to download %1?").arg(newVersion),
-                                       QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        answer = QMessageBox::question(this, tr("qBittorrent Update Available")
+            , tr("A new version is available.") + "<br/>"
+                + tr("Do you want to download %1?").arg(newVersion) + "<br/><br/>"
+                + QString("<a href=\"https://www.qbittorrent.org/news.php\">%1</a>").arg(tr("Open changelog..."))
+            , QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
         if (answer == QMessageBox::Yes) {
             // The user want to update, let's download the update
             ProgramUpdater *updater = dynamic_cast<ProgramUpdater * >(sender());
@@ -1878,8 +1888,10 @@ void MainWindow::on_actionExecutionLogs_triggered(bool checked)
 {
     if (checked) {
         Q_ASSERT(!m_executionLog);
-        m_executionLog = new ExecutionLog(m_tabs, static_cast<Log::MsgType>(executionLogMsgTypes()));
-#ifndef Q_OS_MAC
+        m_executionLog = new ExecutionLogWidget(m_tabs, static_cast<Log::MsgType>(executionLogMsgTypes()));
+#ifdef Q_OS_MAC
+        m_tabs->addTab(m_executionLog, tr("Execution Log"));
+#else
         const int indexTab = m_tabs->addTab(m_executionLog, tr("Execution Log"));
         m_tabs->setTabIcon(indexTab, GuiIconProvider::instance()->getIcon("view-calendar-journal"));
 #endif
@@ -1996,7 +2008,7 @@ QIcon MainWindow::getSystrayIcon() const
     // As a failsafe in case the enum is invalid
     return QIcon(QLatin1String(":/icons/skin/qbittorrent-tray.svg"));
 }
-#endif
+#endif // Q_OS_MAC
 
 #if defined(Q_OS_WIN) || defined(Q_OS_MAC)
 void MainWindow::checkProgramUpdate()
@@ -2037,11 +2049,11 @@ void MainWindow::installPython()
 {
     setCursor(QCursor(Qt::WaitCursor));
     // Download python
-    Net::DownloadHandler *handler = nullptr;
-    if (QSysInfo::windowsVersion() >= QSysInfo::WV_VISTA)
-        handler = Net::DownloadManager::instance()->downloadUrl("https://www.python.org/ftp/python/3.5.2/python-3.5.2.exe", true);
-    else
-        handler = Net::DownloadManager::instance()->downloadUrl("https://www.python.org/ftp/python/3.4.4/python-3.4.4.msi", true);
+    const QString installerURL = ((QSysInfo::windowsVersion() >= QSysInfo::WV_VISTA)
+                                  ? "https://www.python.org/ftp/python/3.5.2/python-3.5.2.exe"
+                                  : "https://www.python.org/ftp/python/3.4.4/python-3.4.4.msi");
+    Net::DownloadHandler *handler = Net::DownloadManager::instance()->download(
+                                        Net::DownloadRequest(installerURL).saveToFile(true));
 
     using Func = void (Net::DownloadHandler::*)(const QString &, const QString &);
     connect(handler, static_cast<Func>(&Net::DownloadHandler::downloadFinished), this, &MainWindow::pythonDownloadSuccess);
@@ -2079,7 +2091,7 @@ void MainWindow::pythonDownloadSuccess(const QString &url, const QString &filePa
     m_hasPython = addPythonPathToEnv();
     if (m_hasPython) {
         // Make it print the version to Log
-        Utils::Misc::pythonVersion();
+        Utils::ForeignApps::pythonInfo();
         m_ui->actionSearchWidget->setChecked(true);
         displaySearchTab(true);
     }
@@ -2092,4 +2104,4 @@ void MainWindow::pythonDownloadFailure(const QString &url, const QString &error)
     QMessageBox::warning(this, tr("Download error"), tr("Python setup could not be downloaded, reason: %1.\nPlease install it manually.").arg(error));
 }
 
-#endif
+#endif // Q_OS_WIN

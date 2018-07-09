@@ -73,13 +73,13 @@ public:
     void updatePlugin(const QString &name);
     void installPlugin(const QString &source);
     bool uninstallPlugin(const QString &name);
-    static void updateIconPath(PluginInfo * const plugin);
+    static void updateIconPath(PluginInfo *const plugin);
     void checkForUpdates();
 
     SearchHandler *startSearch(const QString &pattern, const QString &category, const QStringList &usedPlugins);
     SearchDownloadHandler *downloadTorrent(const QString &siteUrl, const QString &url);
 
-    static PluginVersion getPluginVersion(QString filePath);
+    static PluginVersion getPluginVersion(const QString &filePath);
     static QString categoryFullName(const QString &categoryName);
     QString pluginFullName(const QString &pluginName);
     static QString pluginsLocation();
@@ -111,7 +111,6 @@ private:
     static QString pluginPath(const QString &name);
 
     static QPointer<SearchPluginManager> m_instance;
-    static const QHash<QString, QString> m_categoryNames;
 
     const QString m_updateUrl;
 

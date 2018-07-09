@@ -32,8 +32,8 @@
 #include <QProcess>
 #include <QTimer>
 
+#include "../utils/foreignapps.h"
 #include "../utils/fs.h"
-#include "../utils/misc.h"
 #include "searchpluginmanager.h"
 
 namespace
@@ -70,13 +70,13 @@ SearchHandler::SearchHandler(const QString &pattern, const QString &category, co
     };
 
     // Launch search
-    m_searchProcess->setProgram(Utils::Misc::pythonExecutable());
+    m_searchProcess->setProgram(Utils::ForeignApps::pythonInfo().executableName);
     m_searchProcess->setArguments(params + m_pattern.split(" "));
 
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
     connect(m_searchProcess, &QProcess::errorOccurred, this, &SearchHandler::processFailed);
 #else
-    connect(m_searchProcess, static_cast<void(QProcess::*)(QProcess::ProcessError)>(&QProcess::error)
+    connect(m_searchProcess, static_cast<void (QProcess::*)(QProcess::ProcessError)>(&QProcess::error)
             , this, &SearchHandler::processFailed);
 #endif
     connect(m_searchProcess, &QProcess::readyReadStandardOutput, this, &SearchHandler::readSearchOutput);

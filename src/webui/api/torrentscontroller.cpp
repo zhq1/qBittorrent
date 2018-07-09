@@ -49,8 +49,8 @@
 #include "base/torrentfilter.h"
 #include "base/utils/fs.h"
 #include "base/utils/string.h"
-#include "serialize/serialize_torrent.h"
 #include "apierror.h"
+#include "serialize/serialize_torrent.h"
 
 // Tracker keys
 const char KEY_TRACKER_URL[] = "url";
@@ -132,7 +132,7 @@ namespace
 //   - "hash": Torrent hash
 //   - "name": Torrent name
 //   - "size": Torrent size
-//   - "progress: Torrent progress
+//   - "progress": Torrent progress
 //   - "dlspeed": Torrent download speed
 //   - "upspeed": Torrent upload speed
 //   - "priority": Torrent priority (-1 if queuing is disabled)
@@ -150,6 +150,7 @@ namespace
 // GET params:
 //   - filter (string): all, downloading, seeding, completed, paused, resumed, active, inactive
 //   - category (string): torrent category for filtering by it (empty string means "uncategorized"; no "category" param presented means "any category")
+//   - hashes (string): filter by hashes, can contain multiple hashes separated by |
 //   - sort (string): name of column for sorting by its value
 //   - reverse (bool): enable reverse sorting
 //   - limit (int): set limit number of torrents returned (if greater than 0, otherwise - unlimited)
@@ -162,9 +163,10 @@ void TorrentsController::infoAction()
     const bool reverse {parseBool(params()["reverse"], false)};
     int limit {params()["limit"].toInt()};
     int offset {params()["offset"].toInt()};
+    const QStringSet hashSet {params()["hashes"].split('|', QString::SkipEmptyParts).toSet()};
 
     QVariantList torrentList;
-    TorrentFilter torrentFilter(filter, TorrentFilter::AnyHash, category);
+    TorrentFilter torrentFilter(filter, (hashSet.isEmpty() ? TorrentFilter::AnyHash : hashSet), category);
     foreach (BitTorrent::TorrentHandle *const torrent, BitTorrent::Session::instance()->torrents()) {
         if (torrentFilter.match(torrent))
             torrentList.append(serialize(*torrent));
@@ -623,6 +625,21 @@ void TorrentsController::setDownloadLimitAction()
     applyToTorrents(hashes, [limit](BitTorrent::TorrentHandle *torrent) { torrent->setDownloadLimit(limit); });
 }
 
+void TorrentsController::setShareLimitsAction()
+{
+    checkParams({"hashes", "ratioLimit", "seedingTimeLimit"});
+
+    const qreal ratioLimit = params()["ratioLimit"].toDouble();
+    const qlonglong seedingTimeLimit = params()["seedingTimeLimit"].toLongLong();
+    const QStringList hashes = params()["hashes"].split('|');
+
+    applyToTorrents(hashes, [ratioLimit, seedingTimeLimit](BitTorrent::TorrentHandle *torrent)
+    {
+        torrent->setRatioLimit(ratioLimit);
+        torrent->setSeedingTimeLimit(seedingTimeLimit);
+    });
+}
+
 void TorrentsController::toggleSequentialDownloadAction()
 {
     checkParams({"hashes"});
@@ -720,14 +737,21 @@ void TorrentsController::setLocationAction()
     const QStringList hashes {params()["hashes"].split("|")};
     const QString newLocation {params()["location"].trimmed()};
 
-    // check if the location exists
-    if (newLocation.isEmpty() || !QDir(newLocation).exists())
-        return;
+    if (newLocation.isEmpty())
+        throw APIError(APIErrorType::BadParams, tr("Save path is empty"));
+        
+    // try to create the location if it does not exist
+    if (!QDir(newLocation).mkpath("."))
+        throw APIError(APIErrorType::Conflict, tr("Cannot make save path"));
+    
+    // check permissions
+    if (!QFileInfo(newLocation).isWritable())
+        throw APIError(APIErrorType::AccessDenied, tr("Cannot write to directory"));
 
     applyToTorrents(hashes, [newLocation](BitTorrent::TorrentHandle *torrent)
     {
         LogMsg(tr("WebUI Set location: moving \"%1\", from \"%2\" to \"%3\"")
-               .arg(torrent->name(), torrent->savePath(), newLocation));
+            .arg(torrent->name(), Utils::Fs::toNativePath(torrent->savePath()), Utils::Fs::toNativePath(newLocation)));
         torrent->move(Utils::Fs::expandPathAbs(newLocation));
     });
 }
@@ -747,7 +771,6 @@ void TorrentsController::renameAction()
         throw APIError(APIErrorType::NotFound);
 
     name.replace(QRegularExpression("\r?\n|\r"), " ");
-    qDebug() << "Renaming" << torrent->name() << "to" << name;
     torrent->setName(name);
 }
 

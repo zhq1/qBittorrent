@@ -1,6 +1,6 @@
 /*
  * Bittorrent Client using Qt and libtorrent.
- * Copyright (C) 2012  Christophe Dumez
+ * Copyright (C) 2012  Christophe Dumez <chris@qbittorrent.org>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,21 +24,20 @@
  * modify file(s), you may extend this exception to your version of the file(s),
  * but you are not obligated to do so. If you do not wish to do so, delete this
  * exception statement from your version.
- *
- * Contact : chris@qbittorrent.org
  */
 
 #include "fs.h"
 
 #include <cstring>
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
-#include <QDirIterator>
-#include <QCoreApplication>
 #include <QStorageInfo>
+#include <QRegularExpression>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -152,7 +151,7 @@ bool Utils::Fs::smartRemoveEmptyFolderTree(const QString &path)
 }
 
 /**
- * Removes the file with the given file_path.
+ * Removes the file with the given filePath.
  *
  * This function will try to fix the file permissions before removing it.
  */
@@ -169,7 +168,6 @@ bool Utils::Fs::forceRemove(const QString &filePath)
 
 /**
  * Removes directory and its content recursively.
- *
  */
 void Utils::Fs::removeDirRecursive(const QString &path)
 {
@@ -212,7 +210,7 @@ bool Utils::Fs::sameFiles(const QString &path1, const QString &path2)
     if (!f2.open(QIODevice::ReadOnly)) return false;
 
     const int readSize = 1024 * 1024;  // 1 MiB
-    while(!f1.atEnd() && !f2.atEnd()) {
+    while (!f1.atEnd() && !f2.atEnd()) {
         if (f1.read(readSize) != f2.read(readSize))
             return false;
     }
@@ -221,7 +219,7 @@ bool Utils::Fs::sameFiles(const QString &path1, const QString &path2)
 
 QString Utils::Fs::toValidFileSystemName(const QString &name, bool allowSeparators, const QString &pad)
 {
-    QRegExp regex(allowSeparators ? "[:?\"*<>|]+" : "[\\\\/:?\"*<>|]+");
+    const QRegularExpression regex(allowSeparators ? "[:?\"*<>|]+" : "[\\\\/:?\"*<>|]+");
 
     QString validName = name.trimmed();
     validName.replace(regex, pad);
@@ -234,7 +232,7 @@ bool Utils::Fs::isValidFileSystemName(const QString &name, bool allowSeparators)
 {
     if (name.isEmpty()) return false;
 
-    QRegExp regex(allowSeparators ? "[:?\"*<>|]" : "[\\\\/:?\"*<>|]");
+    const QRegularExpression regex(allowSeparators ? "[:?\"*<>|]" : "[\\\\/:?\"*<>|]");
     return !name.contains(regex);
 }
 

@@ -35,7 +35,7 @@ TorrentContentFilterModel::TorrentContentFilterModel(QObject *parent)
     : QSortFilterProxyModel(parent)
     , m_model(new TorrentContentModel(this))
 {
-    connect(m_model, SIGNAL(filteredFilesChanged()), this, SIGNAL(filteredFilesChanged()));
+    connect(m_model, &TorrentContentModel::filteredFilesChanged, this, &TorrentContentFilterModel::filteredFilesChanged);
     setSourceModel(m_model);
     // Filter settings
     setFilterKeyColumn(TorrentContentModelItem::COL_NAME);
@@ -131,7 +131,7 @@ bool TorrentContentFilterModel::hasFiltered(const QModelIndex &folder) const
     QString name = folder.data().toString();
     if (name.contains(filterRegExp()))
         return true;
-    for (int child = 0; child < m_model->rowCount(folder); child++) {
+    for (int child = 0; child < m_model->rowCount(folder); ++child) {
         QModelIndex childIndex = m_model->index(child, 0, folder);
         if (m_model->hasChildren(childIndex)) {
             if (hasFiltered(childIndex))

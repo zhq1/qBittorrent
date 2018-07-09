@@ -205,6 +205,9 @@ void AppController::preferencesAction()
     for (const Utils::Net::Subnet &subnet : copyAsConst(pref->getWebUiAuthSubnetWhitelist()))
         authSubnetWhitelistStringList << Utils::Net::subnetToString(subnet);
     data["bypass_auth_subnet_whitelist"] = authSubnetWhitelistStringList.join("\n");
+    // Security
+    data["web_ui_clickjacking_protection_enabled"] = pref->isWebUiClickjackingProtectionEnabled();
+    data["web_ui_csrf_protection_enabled"] = pref->isWebUiCSRFProtectionEnabled();
     // Update my dynamic domain name
     data["dyndns_enabled"] = pref->isDynDNSEnabled();
     data["dyndns_service"] = pref->getDynDNSService();
@@ -213,10 +216,10 @@ void AppController::preferencesAction()
     data["dyndns_domain"] = pref->getDynDomainName();
 
     // RSS settings
-    data["RSSRefreshInterval"] = RSS::Session::instance()->refreshInterval();
-    data["RSSMaxArticlesPerFeed"] = RSS::Session::instance()->maxArticlesPerFeed();
-    data["RSSProcessingEnabled"] = RSS::Session::instance()->isProcessingEnabled();
-    data["RSSAutoDownloadingEnabled"] = RSS::AutoDownloader::instance()->isProcessingEnabled();
+    data["rss_refresh_interval"] = RSS::Session::instance()->refreshInterval();
+    data["rss_max_articles_per_feed"] = RSS::Session::instance()->maxArticlesPerFeed();
+    data["rss_processing_enabled"] = RSS::Session::instance()->isProcessingEnabled();
+    data["rss_auto_downloading_enabled"] = RSS::AutoDownloader::instance()->isProcessingEnabled();
 
     setResult(QJsonObject::fromVariantMap(data));
 }
@@ -383,7 +386,7 @@ void AppController::setPreferencesAction()
     if (m.contains("schedule_to_hour") && m.contains("schedule_to_min"))
         pref->setSchedulerEndTime(QTime(m["schedule_to_hour"].toInt(), m["schedule_to_min"].toInt()));
     if (m.contains("scheduler_days"))
-        pref->setSchedulerDays(scheduler_days(m["scheduler_days"].toInt()));
+        pref->setSchedulerDays(SchedulerDays(m["scheduler_days"].toInt()));
 
     // Bittorrent
     // Privacy
@@ -479,6 +482,11 @@ void AppController::setPreferencesAction()
         // recognize new lines and commas as delimiters
         pref->setWebUiAuthSubnetWhitelist(m["bypass_auth_subnet_whitelist"].toString().split(QRegularExpression("\n|,"), QString::SkipEmptyParts));
     }
+    // Security
+    if (m.contains("web_ui_clickjacking_protection_enabled"))
+        pref->setWebUiClickjackingProtectionEnabled(m["web_ui_clickjacking_protection_enabled"].toBool());
+    if (m.contains("web_ui_csrf_protection_enabled"))
+        pref->setWebUiCSRFProtectionEnabled(m["web_ui_csrf_protection_enabled"].toBool());
     // Update my dynamic domain name
     if (m.contains("dyndns_enabled"))
         pref->setDynDNSEnabled(m["dyndns_enabled"].toBool());
@@ -494,10 +502,15 @@ void AppController::setPreferencesAction()
     // Save preferences
     pref->apply();
 
-    RSS::Session::instance()->setRefreshInterval(m["RSSRefreshInterval"].toUInt());
-    RSS::Session::instance()->setMaxArticlesPerFeed(m["RSSMaxArticlesPerFeed"].toInt());
-    RSS::Session::instance()->setProcessingEnabled(m["RSSProcessingEnabled"].toBool());
-    RSS::AutoDownloader::instance()->setProcessingEnabled(m["RSSAutoDownloadingEnabled"].toBool());
+    QVariantMap::ConstIterator it;
+    if ((it = m.find(QLatin1String("rss_refresh_interval"))) != m.constEnd())
+        RSS::Session::instance()->setRefreshInterval(it.value().toUInt());
+    if ((it = m.find(QLatin1String("rss_max_articles_per_feed"))) != m.constEnd())
+        RSS::Session::instance()->setMaxArticlesPerFeed(it.value().toInt());
+    if ((it = m.find(QLatin1String("rss_processing_enabled"))) != m.constEnd())
+        RSS::Session::instance()->setProcessingEnabled(it.value().toBool());
+    if ((it = m.find(QLatin1String("rss_auto_downloading_enabled"))) != m.constEnd())
+        RSS::AutoDownloader::instance()->setProcessingEnabled(it.value().toBool());
 }
 
 void AppController::defaultSavePathAction()

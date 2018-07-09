@@ -27,9 +27,10 @@
  */
 
 #include "proxyconfigurationmanager.h"
+
 #include "base/settingsstorage.h"
 
-#define SETTINGS_KEY(name) "Network/Proxy/" name
+#define SETTINGS_KEY(name) QStringLiteral("Network/Proxy/" name)
 const QString KEY_ONLY_FOR_TORRENTS = SETTINGS_KEY("OnlyForTorrents");
 const QString KEY_TYPE = SETTINGS_KEY("Type");
 const QString KEY_IP = SETTINGS_KEY("IP");
@@ -80,7 +81,7 @@ void ProxyConfigurationManager::freeInstance()
 {
     if (m_instance) {
         delete m_instance;
-        m_instance = 0;
+        m_instance = nullptr;
     }
 }
 
@@ -139,10 +140,10 @@ void ProxyConfigurationManager::configureProxy()
                 , m_config.password, m_config.ip, QString::number(m_config.port));
             break;
         case ProxyType::HTTP:
-            proxyStrHTTP = QString("http://%1:%2").arg(m_config.ip, m_config.port);
+            proxyStrHTTP = QString("http://%1:%2").arg(m_config.ip, QString::number(m_config.port));
             break;
         case ProxyType::SOCKS5:
-            proxyStrSOCK = QString("%1:%2").arg(m_config.ip, m_config.port);
+            proxyStrSOCK = QString("%1:%2").arg(m_config.ip, QString::number(m_config.port));
             break;
         case ProxyType::SOCKS5_PW:
             proxyStrSOCK = QString("%1:%2@%3:%4").arg(m_config.username

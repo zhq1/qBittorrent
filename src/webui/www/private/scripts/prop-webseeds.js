@@ -25,7 +25,7 @@ var webseedsDynTable = new Class({
 
     updateRow: function(tr, row) {
         var tds = tr.getElements('td');
-        for (var i = 0; i < row.length; i++) {
+        for (var i = 0; i < row.length; ++i) {
             tds[i].set('html', row[i]);
         }
         return true;
@@ -41,7 +41,7 @@ var webseedsDynTable = new Class({
         //this.removeRow(id);
         var tr = new Element('tr');
         this.rows.set(url, tr);
-        for (var i = 0; i < row.length; i++) {
+        for (var i = 0; i < row.length; ++i) {
             var td = new Element('td');
             td.set('html', row[i]);
             td.injectInside(tr);
@@ -54,8 +54,8 @@ var current_hash = "";
 
 var loadWebSeedsDataTimer;
 var loadWebSeedsData = function() {
-    if ($('prop_webseeds').hasClass('invisible') ||
-        $('propertiesPanel_collapseToggle').hasClass('panel-expand')) {
+    if ($('prop_webseeds').hasClass('invisible')
+        || $('propertiesPanel_collapseToggle').hasClass('panel-expand')) {
         // Tab changed, don't do anything
         return;
     }

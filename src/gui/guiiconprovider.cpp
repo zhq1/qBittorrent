@@ -28,7 +28,6 @@
  */
 
 #include "guiiconprovider.h"
-#include "base/preferences.h"
 
 #include <QIcon>
 #if (defined(Q_OS_UNIX) && !defined(Q_OS_MAC))
@@ -36,11 +35,13 @@
 #include <QFile>
 #endif
 
+#include "base/preferences.h"
+
 GuiIconProvider::GuiIconProvider(QObject *parent)
     : IconProvider(parent)
 {
     configure();
-    connect(Preferences::instance(), SIGNAL(changed()), SLOT(configure()));
+    connect(Preferences::instance(), &Preferences::changed, this, &GuiIconProvider::configure);
 }
 
 GuiIconProvider::~GuiIconProvider() = default;

@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="${LANG}">
+
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=10" />
     <title>qBittorrent ${VERSION} QBT_TR(Web UI)QBT_TR[CONTEXT=OptionsDialog]</title>
-    <link rel="icon" type="image/png" href="images/skin/qbittorrent16.png" />
+    <link rel="icon" type="image/png" href="images/skin/qbittorrent32.png" />
     <link rel="stylesheet" href="css/dynamicTable.css" type="text/css" />
     <link rel="stylesheet" type="text/css" href="css/style.css" />
     <!--<link rel="stylesheet" type="text/css" href="css/Content.css" />-->
@@ -26,6 +27,7 @@
     <script src="scripts/client.js"></script>
     <script src="scripts/contextmenu.js"></script>
 </head>
+
 <body>
     <div id="desktop">
         <div id="desktopHeader">
@@ -61,10 +63,10 @@
                     <li>
                         <a class="returnFalse">QBT_TR(&View)QBT_TR[CONTEXT=MainWindow]</a>
                         <ul>
-                        <li><a id="showTopToolbarLink"><img class="MyMenuIcon" src="theme/checked" alt="QBT_TR(&Top Toolbar)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(&Top Toolbar)QBT_TR[CONTEXT=MainWindow]</a></li>
-                        <li><a id="showStatusBarLink"><img class="MyMenuIcon" src="theme/checked" alt="QBT_TR(&Status Bar)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(&Status Bar)QBT_TR[CONTEXT=MainWindow]</a></li>
-                        <li><a id="speedInBrowserTitleBarLink"><img class="MyMenuIcon" src="theme/checked" alt="QBT_TR(S&peed in Title Bar)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(S&peed in Title Bar)QBT_TR[CONTEXT=MainWindow]</a></li>
-                        <li class="divider"><a id=StatisticsLink ><img class="MyMenuIcon" src="theme/view-statistics" alt="QBT_TR(&Statistics)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(&Statistics)QBT_TR[CONTEXT=MainWindow]</a></li>
+                            <li><a id="showTopToolbarLink"><img class="MyMenuIcon" src="theme/checked" alt="QBT_TR(&Top Toolbar)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(&Top Toolbar)QBT_TR[CONTEXT=MainWindow]</a></li>
+                            <li><a id="showStatusBarLink"><img class="MyMenuIcon" src="theme/checked" alt="QBT_TR(Status &Bar)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(Status &Bar)QBT_TR[CONTEXT=MainWindow]</a></li>
+                            <li><a id="speedInBrowserTitleBarLink"><img class="MyMenuIcon" src="theme/checked" alt="QBT_TR(S&peed in Title Bar)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(S&peed in Title Bar)QBT_TR[CONTEXT=MainWindow]</a></li>
+                            <li class="divider"><a id=StatisticsLink><img class="MyMenuIcon" src="theme/view-statistics" alt="QBT_TR(&Statistics)QBT_TR[CONTEXT=MainWindow]" width="16" height="16" onload="fixPNG(this)"/>QBT_TR(&Statistics)QBT_TR[CONTEXT=MainWindow]</a></li>
                         </ul>
                     </li>
                     <li>
@@ -120,6 +122,7 @@
         </li>
         <li class="separator"><a href="#DownloadLimit"><img src="theme/kt-set-max-download-speed" alt="QBT_TR(Limit download rate...)QBT_TR[CONTEXT=TransferListWidget]"/> QBT_TR(Limit download rate...)QBT_TR[CONTEXT=TransferListWidget]</a></li>
         <li><a href="#UploadLimit"><img src="theme/kt-set-max-upload-speed" alt="QBT_TR(Limit upload rate...)QBT_TR[CONTEXT=TransferListWidget]"/> QBT_TR(Limit upload rate...)QBT_TR[CONTEXT=TransferListWidget]</a></li>
+        <li><a href="#ShareRatio"><img src="images/skin/ratio.png" alt="QBT_TR(Limit share ratio...)QBT_TR[CONTEXT=TransferListWidget]"/> QBT_TR(Limit share ratio...)QBT_TR[CONTEXT=TransferListWidget]</a></li>
         <li><a href="#SuperSeeding"><img src="theme/checked" alt="QBT_TR(Super seeding mode)QBT_TR[CONTEXT=TransferListWidget]"/> QBT_TR(Super seeding mode)QBT_TR[CONTEXT=TransferListWidget]</a></li>
         <li class="separator"><a href="#SequentialDownload"><img src="theme/checked" alt="QBT_TR(Download in sequential order)QBT_TR[CONTEXT=TransferListWidget]"/> QBT_TR(Download in sequential order)QBT_TR[CONTEXT=TransferListWidget]</a></li>
         <li><a href="#FirstLastPiecePrio"><img src="theme/checked" alt="QBT_TR(Download first and last pieces first)QBT_TR[CONTEXT=TransferListWidget]"/> QBT_TR(Download first and last pieces first)QBT_TR[CONTEXT=TransferListWidget]</a></li>
@@ -152,7 +155,7 @@
                 <tr>
                     <td id="DHTNodes"></td>
                     <td class="statusBarSeparator"></td>
-                    <td><img id="connectionStatus" alt="Connection Status" src="images/skin/firewalled.png" style="height: 1.5em;"/></td>
+                    <td><img id="connectionStatus" alt="Connection Status" src="images/skin/firewalled.png" style="height: 1.5em;" /></td>
                     <td class="statusBarSeparator"></td>
                     <td style="cursor:pointer;"><img id="alternativeSpeedLimits" alt="QBT_TR(Alternative speed limits)QBT_TR[CONTEXT=MainWindow]" src="images/slow_off.png" /></td>
                     <td class="statusBarSeparator"></td>
@@ -164,4 +167,5 @@
         </div>
     </div>
 </body>
+
 </html>

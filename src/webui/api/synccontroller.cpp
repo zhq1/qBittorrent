@@ -327,7 +327,7 @@ namespace
 // Each value of the 'torrents' dictionary contains map. The map can contain following keys:
 //  - "name": Torrent name
 //  - "size": Torrent size
-//  - "progress: Torrent progress
+//  - "progress": Torrent progress
 //  - "dlspeed": Torrent download speed
 //  - "upspeed": Torrent upload speed
 //  - "priority": Torrent priority (-1 if queuing is disabled)
@@ -351,7 +351,10 @@ namespace
 //  - "amount_left": Amount of data left to download
 //  - "save_path": Torrent save path
 //  - "completed": Amount of data completed
+//  - "max_ratio": Upload max share ratio
+//  - "max_seeding_time": Upload max seeding time
 //  - "ratio_limit": Upload share ratio limit
+//  - "seeding_time_limit": Upload seeding time limit
 //  - "seen_complete": Indicates the time when the torrent was last seen complete/whole
 //  - "last_activity": Last time when a chunk was downloaded/uploaded
 //  - "total_size": Size including unwanted data

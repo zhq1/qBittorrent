@@ -27,8 +27,9 @@
  * exception statement from your version.
  */
 
-#include <QString>
 #include "iconprovider.h"
+
+#include <QString>
 
 IconProvider::IconProvider(QObject *parent)
     : QObject(parent)
@@ -47,7 +48,7 @@ void IconProvider::freeInstance()
 {
     if (m_instance) {
         delete m_instance;
-        m_instance = 0;
+        m_instance = nullptr;
     }
 }
 
@@ -61,4 +62,4 @@ QString IconProvider::getIconPath(const QString &iconId)
     return ":/icons/qbt-theme/" + iconId + ".png";
 }
 
-IconProvider *IconProvider::m_instance = 0;
+IconProvider *IconProvider::m_instance = nullptr;

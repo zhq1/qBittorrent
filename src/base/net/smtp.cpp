@@ -34,12 +34,9 @@
 
 #include <QCryptographicHash>
 #include <QDebug>
-#include <QHostAddress>
 #include <QHostInfo>
-#include <QNetworkInterface>
 #include <QStringList>
 #include <QTextCodec>
-#include <QTextStream>
 #ifndef QT_NO_OPENSSL
 #include <QSslSocket>
 #else
@@ -67,7 +64,7 @@ namespace
         // ascii characters 0x36 ("6") and 0x5c ("\") are selected because they have large
         // Hamming distance (http://en.wikipedia.org/wiki/Hamming_distance)
 
-        for (int i = 0; i < key.length(); i++) {
+        for (int i = 0; i < key.length(); ++i) {
             innerPadding[i] = innerPadding[i] ^ key.at(i); // XOR operation between every byte in key and innerpadding, of key length
             outerPadding[i] = outerPadding[i] ^ key.at(i); // XOR operation between every byte in key and outerpadding, of key length
         }
@@ -111,9 +108,10 @@ Smtp::Smtp(QObject *parent)
     m_socket = new QTcpSocket(this);
 #endif
 
-    connect(m_socket, SIGNAL(readyRead()), SLOT(readyRead()));
-    connect(m_socket, SIGNAL(disconnected()), SLOT(deleteLater()));
-    connect(m_socket, SIGNAL(error(QAbstractSocket::SocketError)), SLOT(error(QAbstractSocket::SocketError)));
+    connect(m_socket, &QIODevice::readyRead, this, &Smtp::readyRead);
+    connect(m_socket, &QAbstractSocket::disconnected, this, &QObject::deleteLater);
+    connect(m_socket, static_cast<void (QAbstractSocket::*)(QAbstractSocket::SocketError)>(&QAbstractSocket::error)
+            , this, &Smtp::error);
 
     // Test hmacMD5 function (http://www.faqs.org/rfcs/rfc2202.html)
     Q_ASSERT(hmacMD5("Jefe", "what do ya want for nothing?").toHex()
@@ -129,8 +127,8 @@ Smtp::~Smtp()
 
 void Smtp::sendMail(const QString &from, const QString &to, const QString &subject, const QString &body)
 {
-    const Preferences* const pref = Preferences::instance();
-    QTextCodec* latin1 = QTextCodec::codecForName("latin1");
+    const Preferences *const pref = Preferences::instance();
+    QTextCodec *latin1 = QTextCodec::codecForName("latin1");
     m_message = "Date: " + getCurrentDateTime().toLatin1() + "\r\n"
                 + encodeMimeHeader("From", from, latin1)
                 + encodeMimeHeader("Subject", subject, latin1)
@@ -140,8 +138,8 @@ void Smtp::sendMail(const QString &from, const QString &to, const QString &subje
                 + "Content-Transfer-Encoding: base64\r\n"
                 + "\r\n";
     // Encode the body in base64
-    QString crlf_body = body;
-    QByteArray b = crlf_body.replace("\n", "\r\n").toUtf8().toBase64();
+    QString crlfBody = body;
+    QByteArray b = crlfBody.replace("\n", "\r\n").toUtf8().toBase64();
     int ct = b.length();
     for (int i = 0; i < ct; i += 78)
         m_message += b.mid(i, 78);
@@ -164,7 +162,7 @@ void Smtp::sendMail(const QString &from, const QString &to, const QString &subje
     m_socket->connectToHost(pref->getMailNotificationSMTP(), DEFAULT_PORT);
     m_useSsl = false;
 #ifndef QT_NO_OPENSSL
-}
+    }
 #endif
 }
 
@@ -183,7 +181,7 @@ void Smtp::readyRead()
         QByteArray code = line.left(3);
 
         switch (m_state) {
-        case Init: {
+        case Init:
             if (code[0] == '2') {
                 // The server may send a multiline greeting/INIT/220 response.
                 // We wait until it finishes.
@@ -197,7 +195,6 @@ void Smtp::readyRead()
                 m_state = Close;
             }
             break;
-        }
         case EhloSent:
         case HeloSent:
         case EhloGreetReceived:
@@ -447,7 +444,7 @@ void Smtp::startTLS()
 #endif
 }
 
-void Smtp::authCramMD5(const QByteArray& challenge)
+void Smtp::authCramMD5(const QByteArray &challenge)
 {
     if (m_state != AuthRequestSent) {
         m_socket->write("auth cram-md5\r\n");

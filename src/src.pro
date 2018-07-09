@@ -4,7 +4,6 @@ CONFIG += qt thread silent
 
 # C++11 support
 CONFIG += c++11
-DEFINES += BOOST_NO_CXX11_RVALUE_REFERENCES
 
 # Platform specific configuration
 win32: include(../winconf.pri)
@@ -33,13 +32,17 @@ nogui {
         LIBS += -lobjc
     }
 }
+
 nowebui {
     DEFINES += DISABLE_WEBUI
 }
-strace_win {
-    DEFINES += STACKTRACE_WIN
-    DEFINES += STACKTRACE_WIN_PROJECT_PATH=$$PWD
-    DEFINES += STACKTRACE_WIN_MAKEFILE_PATH=$$OUT_PWD
+
+stacktrace {
+    DEFINES += STACKTRACE
+    win32 {
+        DEFINES += STACKTRACE_WIN_PROJECT_PATH=$$PWD
+        DEFINES += STACKTRACE_WIN_MAKEFILE_PATH=$$OUT_PWD
+    }
 }
 
 CONFIG(debug, debug|release): message(Project is built in DEBUG mode.)
@@ -69,11 +72,11 @@ include(base/base.pri)
 # Resource files
 QMAKE_RESOURCE_FLAGS += -compress 9 -threshold 5
 RESOURCES += \
-    icons.qrc \
-    lang.qrc \
-    searchengine.qrc
+    icons/icons.qrc \
+    lang/lang.qrc \
+    searchengine/searchengine.qrc
 
 # Translations
-TRANSLATIONS += $$files(lang/qbittorrent_*.ts)
+include(lang/lang.pri)
 
 DESTDIR = .
